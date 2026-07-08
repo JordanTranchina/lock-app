@@ -62,7 +62,12 @@ object ScheduleManager {
         event: String,
         triggerAtMillis: Long,
     ) {
-        val pi = pendingIntent(context, scheduleId, event, PendingIntent.FLAG_UPDATE_CURRENT)
+        val pi = PendingIntent.getBroadcast(
+            context,
+            requestCode(scheduleId, event),
+            alarmIntent(context, scheduleId, event),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
         val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
         try {
             if (canExact) {
@@ -79,31 +84,25 @@ object ScheduleManager {
     }
 
     private fun cancel(context: Context, am: AlarmManager, scheduleId: Long, event: String) {
-        val pi = pendingIntent(context, scheduleId, event, PendingIntent.FLAG_NO_CREATE)
+        // FLAG_NO_CREATE returns null when no such alarm is registered — nothing to cancel.
+        val pi = PendingIntent.getBroadcast(
+            context,
+            requestCode(scheduleId, event),
+            alarmIntent(context, scheduleId, event),
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+        )
         if (pi != null) {
             am.cancel(pi)
             pi.cancel()
         }
     }
 
-    private fun pendingIntent(
-        context: Context,
-        scheduleId: Long,
-        event: String,
-        extraFlags: Int,
-    ): PendingIntent? {
-        val intent = Intent(context, ScheduleReceiver::class.java).apply {
+    private fun alarmIntent(context: Context, scheduleId: Long, event: String): Intent =
+        Intent(context, ScheduleReceiver::class.java).apply {
             action = ACTION_ALARM
             putExtra(EXTRA_SCHEDULE_ID, scheduleId)
             putExtra(EXTRA_EVENT, event)
         }
-        return PendingIntent.getBroadcast(
-            context,
-            requestCode(scheduleId, event),
-            intent,
-            extraFlags or PendingIntent.FLAG_IMMUTABLE,
-        )
-    }
 
     /** Stable, collision-free request code: two slots per schedule (start = even, end = odd). */
     private fun requestCode(scheduleId: Long, event: String): Int {
