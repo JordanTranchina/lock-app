@@ -15,11 +15,13 @@ import com.nathanb.lock.data.backup.BackupManager
 import com.nathanb.lock.data.database.LockDatabase
 import com.nathanb.lock.data.database.NfcTagDao
 import com.nathanb.lock.data.database.ProfileDao
+import com.nathanb.lock.data.database.ScheduleDao
 import com.nathanb.lock.data.database.SessionDao
 import com.nathanb.lock.data.model.LockState
 import com.nathanb.lock.data.model.NfcTag
 import com.nathanb.lock.data.model.Profile
 import com.nathanb.lock.data.model.ProfileType
+import com.nathanb.lock.data.model.Schedule
 import com.nathanb.lock.data.model.Session
 import com.nathanb.lock.ui.theme.ThemeMode
 import com.nathanb.lock.util.Constants
@@ -44,6 +46,7 @@ class LockRepository(
     private val profileDao: ProfileDao,
     private val sessionDao: SessionDao,
     private val nfcTagDao: NfcTagDao,
+    private val scheduleDao: ScheduleDao? = null,
     private val database: LockDatabase? = null,
     private val dataStore: DataStore<Preferences> = context!!.dataStore,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -67,6 +70,7 @@ class LockRepository(
         val TIMEOUT_DURATION_MS = longPreferencesKey("timeout_duration_ms")
         val IS_MANUAL_MODE = booleanPreferencesKey("is_manual_mode")
         val LOCK_DURATION_MS = longPreferencesKey("lock_duration_ms")
+        val IS_SCHEDULED = booleanPreferencesKey("is_scheduled")
         // In-app prompts
         val SUPPORT_PROMPT_STAGE = intPreferencesKey("support_prompt_stage")
         val LAST_SEEN_VERSION = intPreferencesKey("last_seen_version_code")
@@ -96,6 +100,7 @@ class LockRepository(
             isManualMode = prefs[Keys.IS_MANUAL_MODE] ?: false,
             lockDurationMs = prefs[Keys.LOCK_DURATION_MS],
             isNoEscape = prefs[Keys.IS_NO_ESCAPE] ?: false,
+            isScheduled = prefs[Keys.IS_SCHEDULED] ?: false,
         )
     }
 
@@ -108,6 +113,10 @@ class LockRepository(
 
     // Profiles
     val profiles: Flow<List<Profile>> = profileDao.getAll()
+
+    // Schedules (scheduled auto-lock windows)
+    val schedules: Flow<List<Schedule>> =
+        scheduleDao?.getAll() ?: MutableStateFlow<List<Schedule>>(emptyList())
 
     init {
         // Keep blocked packages in sync with current state
@@ -135,7 +144,7 @@ class LockRepository(
         }
     }
 
-    suspend fun startLockSession(profileId: Long) {
+    suspend fun startLockSession(profileId: Long, scheduled: Boolean = false) {
         val now = System.currentTimeMillis()
         val profile = profileDao.getById(profileId)
         val isNoEscape = ProfileType.fromValue(profile?.type) == ProfileType.NO_ESCAPE
@@ -149,6 +158,7 @@ class LockRepository(
             prefs[Keys.ACTIVE_PROFILE_ID] = profileId
             prefs[Keys.ACTIVE_SESSION_ID] = sessionId
             prefs[Keys.IS_NO_ESCAPE] = isNoEscape
+            prefs[Keys.IS_SCHEDULED] = scheduled
             if (durationMs != null) prefs[Keys.LOCK_DURATION_MS] = durationMs
             else prefs.remove(Keys.LOCK_DURATION_MS)
             // No-escape: no emergency unlocks. Standard: reset to max (per-session budget).
@@ -174,6 +184,7 @@ class LockRepository(
             it.remove(Keys.ACTIVE_SESSION_ID)
             it.remove(Keys.IS_NO_ESCAPE)
             it.remove(Keys.LOCK_DURATION_MS)
+            it.remove(Keys.IS_SCHEDULED)
         }
     }
 
@@ -315,6 +326,26 @@ class LockRepository(
 
     suspend fun setTagProfile(uid: String, profileId: Long?) {
         nfcTagDao.setProfile(uid, profileId)
+    }
+
+    // --- Scheduled auto-lock ---
+
+    suspend fun getSchedules(): List<Schedule> = scheduleDao?.getAllOnce() ?: emptyList()
+
+    suspend fun getSchedule(id: Long): Schedule? = scheduleDao?.getById(id)
+
+    suspend fun addSchedule(schedule: Schedule): Long = scheduleDao?.insert(schedule) ?: 0L
+
+    suspend fun updateSchedule(schedule: Schedule) {
+        scheduleDao?.update(schedule)
+    }
+
+    suspend fun setScheduleEnabled(id: Long, enabled: Boolean) {
+        scheduleDao?.setEnabled(id, enabled)
+    }
+
+    suspend fun deleteSchedule(schedule: Schedule) {
+        scheduleDao?.delete(schedule)
     }
 
     suspend fun setProfileDuration(profileId: Long, durationMs: Long) {

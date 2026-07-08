@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.Nfc
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.PrivacyTip
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Star
@@ -103,11 +104,13 @@ fun SettingsScreen(
     onNavigateToPermissions: () -> Unit,
     onNavigateToData: () -> Unit,
     onNavigateToSessionSettings: () -> Unit = {},
+    onNavigateToSchedules: () -> Unit = {},
 ) {
     val colors = LockTheme.colors
     val profiles by viewModel.profiles.collectAsStateWithLifecycle()
     val sortedProfiles by viewModel.profilesSorted.collectAsStateWithLifecycle()
     val nfcTags by viewModel.nfcTags.collectAsStateWithLifecycle()
+    val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsStateWithLifecycle()
     val appIconBitmaps by viewModel.blockedAppIcons.collectAsStateWithLifecycle()
@@ -271,6 +274,24 @@ fun SettingsScreen(
                             )
                         },
                     )
+                }
+
+                // Row 3: Schedule (auto lock/unlock)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    val enabledCount = schedules.count { it.enabled }
+                    ActionCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Outlined.Schedule,
+                        title = stringResource(R.string.settings_schedules),
+                        subtitle = stringResource(R.string.settings_schedules_subtitle),
+                        badge = if (enabledCount > 0) "$enabledCount" else null,
+                        showChevron = enabledCount == 0,
+                        onClick = onNavigateToSchedules,
+                    )
+                    Box(modifier = Modifier.weight(1f))
                 }
 
                 // --- SYSTÈME section label ---

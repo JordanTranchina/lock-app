@@ -8,6 +8,7 @@ import androidx.room.Query
 import androidx.room.Update
 import com.nathanb.lock.data.model.NfcTag
 import com.nathanb.lock.data.model.Profile
+import com.nathanb.lock.data.model.Schedule
 import com.nathanb.lock.data.model.Session
 import kotlinx.coroutines.flow.Flow
 
@@ -101,5 +102,32 @@ interface NfcTagDao {
     suspend fun getAllOnce(): List<NfcTag>
 
     @Query("DELETE FROM nfc_tags")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface ScheduleDao {
+    @Query("SELECT * FROM schedules ORDER BY startMinuteOfDay ASC, id ASC")
+    fun getAll(): Flow<List<Schedule>>
+
+    @Query("SELECT * FROM schedules ORDER BY startMinuteOfDay ASC, id ASC")
+    suspend fun getAllOnce(): List<Schedule>
+
+    @Query("SELECT * FROM schedules WHERE id = :id")
+    suspend fun getById(id: Long): Schedule?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(schedule: Schedule): Long
+
+    @Update
+    suspend fun update(schedule: Schedule)
+
+    @Delete
+    suspend fun delete(schedule: Schedule)
+
+    @Query("UPDATE schedules SET enabled = :enabled WHERE id = :id")
+    suspend fun setEnabled(id: Long, enabled: Boolean)
+
+    @Query("DELETE FROM schedules")
     suspend fun deleteAll()
 }

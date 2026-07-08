@@ -48,6 +48,7 @@ import com.nathanb.lock.ui.screens.SplashScreen
 import com.nathanb.lock.ui.screens.StatsScreen
 import com.nathanb.lock.ui.screens.settings.DataScreen
 import com.nathanb.lock.ui.screens.settings.PermissionsScreen
+import com.nathanb.lock.ui.screens.settings.SchedulesScreen
 import com.nathanb.lock.ui.screens.settings.SessionSettingsScreen
 import com.nathanb.lock.ui.theme.LockTheme
 import com.nathanb.lock.ui.viewmodel.LockViewModel
@@ -164,6 +165,9 @@ fun LockApp(viewModel: LockViewModel, isNfcLaunch: Boolean = false) {
                             onNavigateToSessionSettings = {
                                 navController.navigate("session-settings")
                             },
+                            onNavigateToSchedules = {
+                                navController.navigate("schedules")
+                            },
                         )
                     }
                 }
@@ -272,6 +276,17 @@ fun LockApp(viewModel: LockViewModel, isNfcLaunch: Boolean = false) {
                     popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                 ) {
                     SessionSettingsScreen(
+                        viewModel = viewModel,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(
+                    "schedules",
+                    enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                    popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+                ) {
+                    SchedulesScreen(
                         viewModel = viewModel,
                         onBack = { navController.popBackStack() },
                     )

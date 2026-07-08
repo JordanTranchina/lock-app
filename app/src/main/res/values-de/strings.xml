@@ -461,4 +461,38 @@
     <string name="inapp_changelog_2_body">Ein Profil mit Timer, das sich nicht per NFC-Tag deaktivieren lässt.</string>
     <string name="inapp_changelog_3_title">Deutsche Übersetzung</string>
     <string name="inapp_changelog_3_body">Deutsch gesellt sich zu Englisch und Französisch in der App!</string>
+
+    <!-- Geplante automatische Sperre -->
+    <string name="settings_schedules">Zeitplan</string>
+    <string name="settings_schedules_subtitle">Auto-Sperre</string>
+    <string name="settings_schedules_count">%1$d Zeitplan%2$s</string>
+    <string name="schedules_title">Geplante Sperre</string>
+    <string name="schedules_desc">Aktiviere und löse die Sperre automatisch zu festgelegten Zeiten an den von dir gewählten Tagen.</string>
+    <string name="schedules_empty">Noch keine Zeitpläne</string>
+    <string name="schedules_empty_desc">Füge einen Zeitplan hinzu, um automatisch zu sperren und zu entsperren.</string>
+    <string name="schedules_add">Zeitplan hinzufügen</string>
+    <string name="schedule_new_title">Neuer Zeitplan</string>
+    <string name="schedule_edit_title">Zeitplan bearbeiten</string>
+    <string name="schedule_lock_at">Sperren um</string>
+    <string name="schedule_unlock_at">Entsperren um</string>
+    <string name="schedule_repeat">Wiederholen</string>
+    <string name="schedule_profile">Profil</string>
+    <string name="schedule_profile_default">Standardprofil</string>
+    <string name="schedule_delete">Zeitplan löschen</string>
+    <string name="schedule_range">%1$s → %2$s</string>
+    <string name="schedule_overnight_note">Endet am nächsten Morgen</string>
+    <string name="schedules_every_day">Jeden Tag</string>
+    <string name="schedules_weekdays">Wochentags</string>
+    <string name="schedules_weekends">Wochenende</string>
+    <string name="schedule_no_days">Wähle mindestens einen Tag</string>
+    <string name="schedule_exact_alarm_title">Exakte Alarme erlauben</string>
+    <string name="schedule_exact_alarm_desc">Für pünktliches Sperren erlaube Lock, exakte Alarme zu planen. Andernfalls kann sich die Sperre verzögern.</string>
+    <string name="schedule_exact_alarm_action">Einstellungen öffnen</string>
+    <string name="schedule_day_mon">Mo</string>
+    <string name="schedule_day_tue">Di</string>
+    <string name="schedule_day_wed">Mi</string>
+    <string name="schedule_day_thu">Do</string>
+    <string name="schedule_day_fri">Fr</string>
+    <string name="schedule_day_sat">Sa</string>
+    <string name="schedule_day_sun">So</string>
 </resources>

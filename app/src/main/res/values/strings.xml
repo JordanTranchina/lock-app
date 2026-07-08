@@ -461,4 +461,38 @@
     <string name="inapp_changelog_2_body">A timed profile that can\'t be turned off with an NFC tag.</string>
     <string name="inapp_changelog_3_title">German translation</string>
     <string name="inapp_changelog_3_body">German joins English and French in the app!</string>
+
+    <!-- Scheduled auto-lock -->
+    <string name="settings_schedules">Schedule</string>
+    <string name="settings_schedules_subtitle">Auto lock &amp; unlock</string>
+    <string name="settings_schedules_count">%1$d schedule%2$s</string>
+    <string name="schedules_title">Scheduled locking</string>
+    <string name="schedules_desc">Automatically engage and release the lock at set times on the days you choose.</string>
+    <string name="schedules_empty">No schedules yet</string>
+    <string name="schedules_empty_desc">Add a schedule to lock and unlock automatically.</string>
+    <string name="schedules_add">Add schedule</string>
+    <string name="schedule_new_title">New schedule</string>
+    <string name="schedule_edit_title">Edit schedule</string>
+    <string name="schedule_lock_at">Lock at</string>
+    <string name="schedule_unlock_at">Unlock at</string>
+    <string name="schedule_repeat">Repeat</string>
+    <string name="schedule_profile">Profile</string>
+    <string name="schedule_profile_default">Default profile</string>
+    <string name="schedule_delete">Delete schedule</string>
+    <string name="schedule_range">%1$s → %2$s</string>
+    <string name="schedule_overnight_note">Ends the next morning</string>
+    <string name="schedules_every_day">Every day</string>
+    <string name="schedules_weekdays">Weekdays</string>
+    <string name="schedules_weekends">Weekends</string>
+    <string name="schedule_no_days">Pick at least one day</string>
+    <string name="schedule_exact_alarm_title">Allow exact alarms</string>
+    <string name="schedule_exact_alarm_desc">For precise on-time locking, allow Lock to schedule exact alarms. Without it, locks may be delayed.</string>
+    <string name="schedule_exact_alarm_action">Open settings</string>
+    <string name="schedule_day_mon">Mon</string>
+    <string name="schedule_day_tue">Tue</string>
+    <string name="schedule_day_wed">Wed</string>
+    <string name="schedule_day_thu">Thu</string>
+    <string name="schedule_day_fri">Fri</string>
+    <string name="schedule_day_sat">Sat</string>
+    <string name="schedule_day_sun">Sun</string>
 </resources>
