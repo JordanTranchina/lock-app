@@ -25,6 +25,16 @@ android {
         targetSdk = 35
         versionCode = 6
         versionName = "1.1.4"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Room exports schemas here (see room {} below); expose them to instrumented
+    // tests as assets so MigrationTestHelper can validate migrations against them.
+    sourceSets {
+        getByName("androidTest") {
+            assets.srcDirs(files("$projectDir/schemas"))
+        }
     }
 
     signingConfigs {
@@ -112,8 +122,15 @@ dependencies {
     implementation("com.google.android.play:review:2.0.2")
     implementation("com.google.android.play:review-ktx:2.0.2")
 
-    // Test
+    // Unit tests (JVM)
     testImplementation("junit:junit:4.13.2")
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+
+    // Instrumented tests (on-device / emulator)
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:core-ktx:1.6.1")
+    androidTestImplementation("androidx.room:room-testing:2.7.1")
+    androidTestImplementation(libs.kotlinx.coroutines.test)
 }
