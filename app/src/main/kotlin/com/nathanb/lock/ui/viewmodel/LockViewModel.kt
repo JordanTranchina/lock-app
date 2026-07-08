@@ -24,11 +24,13 @@ import com.nathanb.lock.data.model.EndReason
 import com.nathanb.lock.data.model.NfcTag
 import com.nathanb.lock.data.model.Profile
 import com.nathanb.lock.data.model.ProfileType
+import com.nathanb.lock.data.model.Schedule
 import com.nathanb.lock.data.model.Session
 import com.nathanb.lock.data.repository.LockRepository
 import com.nathanb.lock.nfc.NfcManager
 import com.nathanb.lock.nfc.NfcResult
 import com.nathanb.lock.service.LockForegroundService
+import com.nathanb.lock.service.ScheduleManager
 import com.nathanb.lock.ui.theme.ThemeMode
 import com.nathanb.lock.util.Constants
 import kotlinx.coroutines.Dispatchers
@@ -290,6 +292,14 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
                     disableManualMode()
                 }
             }
+        }
+    }
+
+    // Re-arm scheduled auto-lock alarms on app start. The system clears alarms on reboot
+    // (handled by BootReceiver) and on app update / force-stop (handled here on next launch).
+    init {
+        viewModelScope.launch {
+            ScheduleManager.rescheduleAll(getApplication(), repository.getSchedules())
         }
     }
 
@@ -717,6 +727,58 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
 
     fun assignTagToProfile(uid: String, profileId: Long) {
         viewModelScope.launch { repository.setTagProfile(uid, profileId) }
+    }
+
+    // --- Scheduled auto-lock ---
+
+    val schedules: StateFlow<List<Schedule>> = repository.schedules
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Persist a schedule change, then re-arm all alarms from the fresh DB state. */
+    private suspend fun rearmSchedules() {
+        ScheduleManager.rescheduleAll(getApplication(), repository.getSchedules())
+    }
+
+    fun addSchedule(
+        startMinuteOfDay: Int,
+        endMinuteOfDay: Int,
+        daysMask: Int,
+        profileId: Long?,
+    ) {
+        viewModelScope.launch {
+            repository.addSchedule(
+                Schedule(
+                    startMinuteOfDay = startMinuteOfDay,
+                    endMinuteOfDay = endMinuteOfDay,
+                    daysMask = daysMask,
+                    profileId = profileId,
+                    enabled = true,
+                )
+            )
+            rearmSchedules()
+        }
+    }
+
+    fun updateSchedule(schedule: Schedule) {
+        viewModelScope.launch {
+            repository.updateSchedule(schedule)
+            rearmSchedules()
+        }
+    }
+
+    fun setScheduleEnabled(id: Long, enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setScheduleEnabled(id, enabled)
+            rearmSchedules()
+        }
+    }
+
+    fun deleteSchedule(schedule: Schedule) {
+        viewModelScope.launch {
+            ScheduleManager.cancelSchedule(getApplication(), schedule.id)
+            repository.deleteSchedule(schedule)
+            rearmSchedules()
+        }
     }
 
     override fun onCleared() {

@@ -459,4 +459,38 @@
     <string name="inapp_changelog_2_body">Un profil avec minuteur, non désactivable via tag NFC.</string>
     <string name="inapp_changelog_3_title">Traduction allemande</string>
     <string name="inapp_changelog_3_body">L\'allemand rejoint l\'anglais et le français de l\'app !</string>
+
+    <!-- Verrouillage programmé -->
+    <string name="settings_schedules">Horaires</string>
+    <string name="settings_schedules_subtitle">Verrouillage auto</string>
+    <string name="settings_schedules_count">%1$d horaire%2$s</string>
+    <string name="schedules_title">Verrouillage programmé</string>
+    <string name="schedules_desc">Activez et désactivez le blocage automatiquement, aux heures et aux jours que vous choisissez.</string>
+    <string name="schedules_empty">Aucun horaire</string>
+    <string name="schedules_empty_desc">Ajoutez un horaire pour verrouiller et déverrouiller automatiquement.</string>
+    <string name="schedules_add">Ajouter un horaire</string>
+    <string name="schedule_new_title">Nouvel horaire</string>
+    <string name="schedule_edit_title">Modifier l\'horaire</string>
+    <string name="schedule_lock_at">Verrouiller à</string>
+    <string name="schedule_unlock_at">Déverrouiller à</string>
+    <string name="schedule_repeat">Répéter</string>
+    <string name="schedule_profile">Profil</string>
+    <string name="schedule_profile_default">Profil par défaut</string>
+    <string name="schedule_delete">Supprimer l\'horaire</string>
+    <string name="schedule_range">%1$s → %2$s</string>
+    <string name="schedule_overnight_note">Se termine le lendemain matin</string>
+    <string name="schedules_every_day">Tous les jours</string>
+    <string name="schedules_weekdays">En semaine</string>
+    <string name="schedules_weekends">Week-end</string>
+    <string name="schedule_no_days">Choisissez au moins un jour</string>
+    <string name="schedule_exact_alarm_title">Autoriser les alarmes exactes</string>
+    <string name="schedule_exact_alarm_desc">Pour un verrouillage à l\'heure précise, autorisez Lock à programmer des alarmes exactes. Sans cela, le verrouillage peut être retardé.</string>
+    <string name="schedule_exact_alarm_action">Ouvrir les réglages</string>
+    <string name="schedule_day_mon">Lun</string>
+    <string name="schedule_day_tue">Mar</string>
+    <string name="schedule_day_wed">Mer</string>
+    <string name="schedule_day_thu">Jeu</string>
+    <string name="schedule_day_fri">Ven</string>
+    <string name="schedule_day_sat">Sam</string>
+    <string name="schedule_day_sun">Dim</string>
 </resources>

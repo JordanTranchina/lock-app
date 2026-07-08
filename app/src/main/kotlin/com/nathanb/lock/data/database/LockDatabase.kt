@@ -7,6 +7,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.nathanb.lock.data.model.NfcTag
 import com.nathanb.lock.data.model.Profile
+import com.nathanb.lock.data.model.Schedule
 import com.nathanb.lock.data.model.Session
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -49,9 +50,24 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Scheduled auto-lock windows (defaults must match @ColumnInfo defaults in Models.kt)
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `schedules` (" +
+                "`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                "`enabled` INTEGER NOT NULL DEFAULT 1, " +
+                "`profileId` INTEGER, " +
+                "`startMinuteOfDay` INTEGER NOT NULL, " +
+                "`endMinuteOfDay` INTEGER NOT NULL, " +
+                "`daysMask` INTEGER NOT NULL DEFAULT 127)"
+        )
+    }
+}
+
 @Database(
-    entities = [Profile::class, Session::class, NfcTag::class],
-    version = 4,
+    entities = [Profile::class, Session::class, NfcTag::class, Schedule::class],
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -59,4 +75,5 @@ abstract class LockDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao
     abstract fun sessionDao(): SessionDao
     abstract fun nfcTagDao(): NfcTagDao
+    abstract fun scheduleDao(): ScheduleDao
 }

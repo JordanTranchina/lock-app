@@ -42,6 +42,33 @@ data class NfcTag(
     val profileId: Long? = null,
 )
 
+/**
+ * A recurring time window that auto-engages the lock at [startMinuteOfDay] and auto-releases it
+ * at [endMinuteOfDay], on the weekdays selected in [daysMask].
+ *
+ * Start and end are independent time-of-day events, each governed by [daysMask]. For a same-day
+ * window (e.g. 09:00→17:00 on weekdays) both fire on the selected days. For an overnight window
+ * (e.g. 22:00→07:00) the release fires the following morning, so include the mornings you want
+ * released in the mask too.
+ */
+@Entity(tableName = "schedules")
+data class Schedule(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @ColumnInfo(defaultValue = "1") val enabled: Boolean = true,
+    /** Profile to lock with. null → the current default profile at trigger time. */
+    val profileId: Long? = null,
+    /** Minutes since midnight (0..1439) at which the lock engages. */
+    val startMinuteOfDay: Int,
+    /** Minutes since midnight (0..1439) at which the lock releases. */
+    val endMinuteOfDay: Int,
+    /** Weekday bitmask: bit 0 = Monday … bit 6 = Sunday. */
+    @ColumnInfo(defaultValue = "127") val daysMask: Int = ALL_DAYS,
+) {
+    companion object {
+        const val ALL_DAYS = 0b1111111 // 127 — every day
+    }
+}
+
 data class LockState(
     val isLocked: Boolean = false,
     val sessionStartTime: Long? = null,
@@ -51,6 +78,8 @@ data class LockState(
     val isManualMode: Boolean = false,
     val lockDurationMs: Long? = null,
     val isNoEscape: Boolean = false,
+    /** True when the active session was started by a schedule (auto-released by the schedule). */
+    val isScheduled: Boolean = false,
 )
 
 data class SetupStatus(
@@ -75,4 +104,5 @@ enum class EndReason(val value: String) {
     DURATION("duration"),
     CANCELLED("cancelled"),
     UNINSTALL("uninstall"),
+    SCHEDULE("schedule"),
 }
