@@ -59,6 +59,7 @@
     <string name="settings_session">Session</string>
     <string name="settings_session_subtitle">Délai de grâce, durée, ..</string>
     <string name="settings_appearance">Apparence</string>
+    <string name="settings_language">Langue</string>
     <string name="settings_notifications">Notifications</string>
     <string name="settings_notifications_on">Activées</string>
     <string name="settings_notifications_off">Désactivées</string>
@@ -76,6 +77,9 @@
     <string name="theme_auto">Auto</string>
     <string name="theme_light">Clair</string>
     <string name="theme_dark">Sombre</string>
+
+    <!-- Language -->
+    <string name="language_system">Langue du système</string>
 
     <!-- Profile Card -->
     <string name="profile_apps_to_block">Applications à bloquer</string>

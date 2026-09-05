@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Nfc
 import androidx.compose.material.icons.outlined.Notifications
@@ -84,12 +85,15 @@ import com.nathanb.lock.ui.screens.settings.SectionHeader
 import com.nathanb.lock.ui.screens.settings.SettingsCard
 import com.nathanb.lock.ui.screens.settings.SettingsDivider
 import com.nathanb.lock.ui.screens.settings.SettingsRow
+import com.nathanb.lock.ui.screens.settings.LanguageSelector
 import com.nathanb.lock.ui.screens.settings.ThemeSelector
 import com.nathanb.lock.ui.theme.LockTheme
 import com.nathanb.lock.ui.theme.SatoshiFamily
 import com.nathanb.lock.ui.theme.ThemeMode
 import com.nathanb.lock.ui.viewmodel.LockViewModel
+import com.nathanb.lock.util.AppLanguage
 import com.nathanb.lock.util.Constants
+import com.nathanb.lock.util.LanguageHelper
 import com.nathanb.lock.util.RateHelper
 import com.nathanb.lock.util.PermissionHelper
 
@@ -118,7 +122,9 @@ fun SettingsScreen(
 
     var overlayOk by remember { mutableStateOf(PermissionHelper.canDrawOverlays(context)) }
     var accessibilityOk by remember { mutableStateOf(PermissionHelper.isAccessibilityServiceEnabled(context)) }
+    var currentLanguage by remember { mutableStateOf(LanguageHelper.getCurrent(context)) }
     var showThemeSheet by remember { mutableStateOf(false) }
+    var showLanguageSheet by remember { mutableStateOf(false) }
     var showBreathingSheet by remember { mutableStateOf(false) }
     var showSupportSheet by remember { mutableStateOf(false) }
 
@@ -134,6 +140,7 @@ fun SettingsScreen(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             overlayOk = PermissionHelper.canDrawOverlays(context)
             accessibilityOk = PermissionHelper.isAccessibilityServiceEnabled(context)
+            currentLanguage = LanguageHelper.getCurrent(context)
         }
     }
 
@@ -149,6 +156,13 @@ fun SettingsScreen(
         ThemeMode.LIGHT -> stringResource(R.string.theme_light)
         ThemeMode.DARK -> stringResource(R.string.theme_dark)
         ThemeMode.SYSTEM -> stringResource(R.string.theme_auto)
+    }
+
+    val languageLabel = when (currentLanguage) {
+        AppLanguage.ENGLISH -> "English"
+        AppLanguage.FRENCH -> "Français"
+        AppLanguage.GERMAN -> "Deutsch"
+        AppLanguage.SYSTEM -> stringResource(R.string.language_system)
     }
 
     Scaffold(
@@ -311,6 +325,22 @@ fun SettingsScreen(
                             )
                         },
                     )
+                }
+
+                // Row 3: Langue
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    ActionCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Outlined.Language,
+                        title = stringResource(R.string.settings_language),
+                        subtitle = languageLabel,
+                        showChevron = true,
+                        onClick = { showLanguageSheet = true },
+                    )
+                    Spacer(Modifier.weight(1f))
                 }
 
                 // --- SYSTÈME section label ---
@@ -504,6 +534,52 @@ fun SettingsScreen(
                 ThemeSelector(
                     currentMode = themeMode,
                     onModeSelected = { viewModel.setThemeMode(it) },
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+
+    // --- Language Bottom Sheet ---
+    if (showLanguageSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showLanguageSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = colors.surfaceContainer,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            dragHandle = {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 14.dp, bottom = 10.dp)
+                        .size(width = 40.dp, height = 4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(colors.onSurface.copy(alpha = 0.15f)),
+                )
+            },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 16.dp)
+                    .navigationBarsPadding(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_language),
+                    fontFamily = SatoshiFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = colors.onSurface,
+                )
+                Spacer(Modifier.height(20.dp))
+                LanguageSelector(
+                    currentLanguage = currentLanguage,
+                    onLanguageSelected = { language ->
+                        LanguageHelper.setLanguage(context, language)
+                        currentLanguage = language
+                        showLanguageSheet = false
+                    },
                 )
                 Spacer(Modifier.height(8.dp))
             }
