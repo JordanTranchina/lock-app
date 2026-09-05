@@ -16,7 +16,7 @@
     <!-- Boot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <!-- Exact alarms for scheduled auto-lock (falls back to inexact if not granted) -->
+    <!-- Exact alarms for scheduled auto-lock windows (user grants it in system settings) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <!-- Overlay (draw over other apps) -->
@@ -79,23 +79,29 @@
                 android:value="App blocker: blocks distracting apps during focus sessions" />
         </service>
 
-        <!-- Boot / time-change Receiver -->
+        <!-- Boot Receiver -->
         <receiver
             android:name=".service.BootReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.TIME_SET" />
-                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
         </receiver>
 
-        <!-- Scheduled auto-lock alarm Receiver -->
+        <!-- Session timeout: wall-clock alarm ending a session when its duration elapses -->
         <receiver
-            android:name=".service.ScheduleReceiver"
+            android:name=".service.SessionTimeoutReceiver"
+            android:exported="false" />
+
+        <!-- Schedule engine: window-boundary alarms + events that invalidate them -->
+        <receiver
+            android:name=".schedule.ScheduleAlarmReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.nathanb.lock.SCHEDULE_ALARM" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
 

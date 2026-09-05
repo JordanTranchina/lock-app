@@ -17,29 +17,26 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        // Boot restores a running session; time/timezone changes invalidate pending alarm times.
-        // All three cases require re-registering the schedule alarms.
-        val relevant = intent.action == Intent.ACTION_BOOT_COMPLETED ||
-            intent.action == Intent.ACTION_TIME_CHANGED ||
-            intent.action == Intent.ACTION_TIMEZONE_CHANGED
-        if (!relevant) return
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
 
-        if (BuildConfig.DEBUG) Log.d(TAG, "Received ${intent.action}, restoring lock state + schedules")
+        if (BuildConfig.DEBUG) Log.d(TAG, "Boot completed, checking lock state")
 
         val pendingResult = goAsync()
-        val appContext = context.applicationContext
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val app = appContext as LockApplication
+                val app = context.applicationContext as LockApplication
                 val state = app.repository.getLockState()
 
-                if (intent.action == Intent.ACTION_BOOT_COMPLETED && state.isLocked) {
+                if (state.isLocked) {
                     if (BuildConfig.DEBUG) Log.d(TAG, "Was locked before reboot, restarting foreground service")
-                    LockForegroundService.start(appContext)
+                    LockForegroundService.start(context)
                 }
 
-                // Re-arm scheduled auto-lock alarms (alarms are cleared on reboot / time change).
-                ScheduleManager.rescheduleAll(appContext, app.repository.getSchedules())
+                // Alarms don't survive a reboot: re-evaluate windows and re-arm the next boundary.
+                // Timeout ceiling: never hold the broadcast past the ANR limit.
+                kotlinx.coroutines.withTimeoutOrNull(8_000L) {
+                    app.scheduleManager.evaluateAndRearm()
+                }
             } finally {
                 pendingResult.finish()
             }

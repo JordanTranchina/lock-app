@@ -23,6 +23,8 @@ data class Profile(
     @ColumnInfo(defaultValue = "standard") val type: String = ProfileType.STANDARD.value,
     @ColumnInfo(defaultValue = "0") val isDefault: Boolean = false,
     val durationMs: Long? = null,
+    /** No-escape only: when the timer ends, keep blocking until the next tag scan. */
+    @ColumnInfo(defaultValue = "0") val continuity: Boolean = false,
 )
 
 @Entity(tableName = "sessions", indices = [Index("startTime")])
@@ -43,31 +45,50 @@ data class NfcTag(
 )
 
 /**
- * A recurring time window that auto-engages the lock at [startMinuteOfDay] and auto-releases it
- * at [endMinuteOfDay], on the weekdays selected in [daysMask].
- *
- * Start and end are independent time-of-day events, each governed by [daysMask]. For a same-day
- * window (e.g. 09:00→17:00 on weekdays) both fire on the selected days. For an overnight window
- * (e.g. 22:00→07:00) the release fires the following morning, so include the mornings you want
- * released in the mask too.
+ * A recurring auto-lock window. Days are a bitmask (bit 0 = Monday … bit 6 = Sunday,
+ * i.e. `1 shl (DayOfWeek.value - 1)`). An occurrence belongs to the day its START falls
+ * on; endMinuteOfDay <= startMinuteOfDay means the window ends the next day (overnight).
+ * Blocked apps come from the attached profiles (schedule_profiles join table); a schedule
+ * with no attached profile is inert.
  */
+/** What an NFC scan does during a schedule's window. */
+enum class ScanBehavior(val value: String) {
+    /** Current behavior: unblocks until the window's next occurrence (consumes it). */
+    UNLOCK("unlock"),
+
+    /** Unblocks for [Schedule.pauseDurationMs], then blocking resumes automatically. */
+    PAUSE("pause");
+
+    companion object {
+        fun fromValue(value: String?): ScanBehavior =
+            entries.firstOrNull { it.value == value } ?: UNLOCK
+    }
+}
+
 @Entity(tableName = "schedules")
 data class Schedule(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    @ColumnInfo(defaultValue = "1") val enabled: Boolean = true,
-    /** Profile to lock with. null → the current default profile at trigger time. */
-    val profileId: Long? = null,
-    /** Minutes since midnight (0..1439) at which the lock engages. */
+    val daysOfWeek: Int,
     val startMinuteOfDay: Int,
-    /** Minutes since midnight (0..1439) at which the lock releases. */
     val endMinuteOfDay: Int,
-    /** Weekday bitmask: bit 0 = Monday … bit 6 = Sunday. */
-    @ColumnInfo(defaultValue = "127") val daysMask: Int = ALL_DAYS,
-) {
-    companion object {
-        const val ALL_DAYS = 0b1111111 // 127 — every day
-    }
-}
+    @ColumnInfo(defaultValue = "1") val enabled: Boolean = true,
+    val createdAt: Long = System.currentTimeMillis(),
+    /** Covers the whole selected day (start/end minutes are ignored). */
+    @ColumnInfo(defaultValue = "0") val allDay: Boolean = false,
+    @ColumnInfo(defaultValue = "unlock") val scanBehavior: String = ScanBehavior.UNLOCK.value,
+    /** PAUSE behavior only: how long a scan unblocks before blocking resumes. */
+    val pauseDurationMs: Long? = null,
+)
+
+@Entity(
+    tableName = "schedule_profiles",
+    primaryKeys = ["scheduleId", "profileId"],
+    indices = [Index("profileId")],
+)
+data class ScheduleProfileLink(
+    val scheduleId: Long,
+    val profileId: Long,
+)
 
 data class LockState(
     val isLocked: Boolean = false,
@@ -78,8 +99,7 @@ data class LockState(
     val isManualMode: Boolean = false,
     val lockDurationMs: Long? = null,
     val isNoEscape: Boolean = false,
-    /** True when the active session was started by a schedule (auto-released by the schedule). */
-    val isScheduled: Boolean = false,
+    val isScheduleOrigin: Boolean = false,
 )
 
 data class SetupStatus(
@@ -104,5 +124,6 @@ enum class EndReason(val value: String) {
     DURATION("duration"),
     CANCELLED("cancelled"),
     UNINSTALL("uninstall"),
+    /** A scheduled window reached its end time. */
     SCHEDULE("schedule"),
 }

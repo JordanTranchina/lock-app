@@ -95,6 +95,9 @@ class MainActivity : ComponentActivity() {
                 val tagInfo = result.tagName?.let { " ($it)" } ?: ""
                 Toast.makeText(this, getString(R.string.toast_blocking_off, tagInfo), Toast.LENGTH_SHORT).show()
             }
+            is NfcResult.Paused -> {
+                Toast.makeText(this, getString(R.string.toast_pause_resumes, result.resumeInMinutes), Toast.LENGTH_SHORT).show()
+            }
             is NfcResult.IgnoredNoEscapeActive -> {
                 Toast.makeText(this, getString(R.string.toast_no_escape_active), Toast.LENGTH_SHORT).show()
             }
@@ -102,7 +105,7 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, getString(R.string.toast_unknown_tag), Toast.LENGTH_SHORT).show()
             }
             is NfcResult.Error -> {
-                Toast.makeText(this, result.message, Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(result.messageRes), Toast.LENGTH_SHORT).show()
             }
         }
     }

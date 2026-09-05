@@ -7,7 +7,15 @@ import com.nathanb.lock.data.database.MIGRATION_1_2
 import com.nathanb.lock.data.database.MIGRATION_2_3
 import com.nathanb.lock.data.database.MIGRATION_3_4
 import com.nathanb.lock.data.database.MIGRATION_4_5
+import com.nathanb.lock.data.database.MIGRATION_5_6
+import com.nathanb.lock.data.database.MIGRATION_6_7
 import com.nathanb.lock.data.repository.LockRepository
+import com.nathanb.lock.schedule.AndroidScheduleEffects
+import com.nathanb.lock.schedule.ScheduleManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class LockApplication : Application() {
 
@@ -17,6 +25,11 @@ class LockApplication : Application() {
     lateinit var repository: LockRepository
         private set
 
+    lateinit var scheduleManager: ScheduleManager
+        private set
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onCreate() {
         super.onCreate()
 
@@ -25,7 +38,7 @@ class LockApplication : Application() {
             LockDatabase::class.java,
             "lock.db",
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .build()
 
         repository = LockRepository(
@@ -34,7 +47,14 @@ class LockApplication : Application() {
             sessionDao = database.sessionDao(),
             nfcTagDao = database.nfcTagDao(),
             scheduleDao = database.scheduleDao(),
+            scheduleProfileDao = database.scheduleProfileDao(),
             database = database,
         )
+
+        scheduleManager = ScheduleManager(repository, AndroidScheduleEffects(this))
+        // Any session end (NFC, manual, timeout, FGS...) re-evaluates the windows.
+        repository.onSessionEnded = { scheduleManager.evaluateAndRearm() }
+        // Startup safety net: covers missed inexact alarms and process death.
+        appScope.launch { scheduleManager.evaluateAndRearm() }
     }
 }

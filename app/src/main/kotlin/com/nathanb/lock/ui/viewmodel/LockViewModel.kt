@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ColorMatrixColorFilter
 import android.net.Uri
+import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import com.nathanb.lock.R
 import androidx.compose.ui.graphics.asImageBitmap
@@ -25,12 +26,13 @@ import com.nathanb.lock.data.model.NfcTag
 import com.nathanb.lock.data.model.Profile
 import com.nathanb.lock.data.model.ProfileType
 import com.nathanb.lock.data.model.Schedule
+import com.nathanb.lock.data.model.ScheduleProfileLink
 import com.nathanb.lock.data.model.Session
 import com.nathanb.lock.data.repository.LockRepository
+import com.nathanb.lock.nfc.NdefWriteResult
 import com.nathanb.lock.nfc.NfcManager
 import com.nathanb.lock.nfc.NfcResult
 import com.nathanb.lock.service.LockForegroundService
-import com.nathanb.lock.service.ScheduleManager
 import com.nathanb.lock.ui.theme.ThemeMode
 import com.nathanb.lock.util.Constants
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +48,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.nathanb.lock.util.SupportPrompt
 
 data class InstalledApp(
     val packageName: String,
@@ -262,9 +265,18 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
     // Self-heal: a timed (no-escape) session must auto-end even if the foreground service was
     // killed (app update, OOM, reboot). Independent of LockForegroundService.timeoutJob.
     private var autoEndJob: kotlinx.coroutines.Job? = null
+    private var wasLocked = false
     init {
         viewModelScope.launch {
             lockState.collect { state ->
+                // Sessions can end outside the ViewModel (FGS timeout, schedule window end):
+                // clear grace/emergency UI state so it doesn't leak into the next session.
+                if (wasLocked && !state.isLocked) {
+                    cancelGracePeriod()
+                    cancelEmergency()
+                }
+                wasLocked = state.isLocked
+
                 autoEndJob?.cancel()
                 val duration = state.lockDurationMs
                 val start = state.sessionStartTime
@@ -275,8 +287,11 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
                         if (lockState.value.isLocked) {
                             cancelGracePeriod()
                             cancelEmergency()
-                            repository.endLockSession(EndReason.DURATION.value)
-                            LockForegroundService.stop(getApplication())
+                            if (repository.endOrContinueTimedSession(EndReason.DURATION.value)) {
+                                LockForegroundService.start(getApplication())
+                            } else {
+                                LockForegroundService.stop(getApplication())
+                            }
                         }
                     }
                 }
@@ -292,14 +307,6 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
                     disableManualMode()
                 }
             }
-        }
-    }
-
-    // Re-arm scheduled auto-lock alarms on app start. The system clears alarms on reboot
-    // (handled by BootReceiver) and on app update / force-stop (handled here on next launch).
-    init {
-        viewModelScope.launch {
-            ScheduleManager.rescheduleAll(getApplication(), repository.getSchedules())
         }
     }
 
@@ -323,6 +330,34 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
     // UID of the last scanned tag in pairing mode, waiting for a name
     private val _pendingPairingUid = MutableStateFlow<String?>(null)
     val pendingPairingUid: StateFlow<String?> = _pendingPairingUid.asStateFlow()
+
+    /**
+     * Write outcome of the last pairing attempt. TRANSIENT_FAILURE means the pairing screen
+     * must stay up ("hold the tag still") — the next contact retries automatically.
+     */
+    private val _pairingWriteResult = MutableStateFlow<NdefWriteResult?>(null)
+    val pairingWriteResult: StateFlow<NdefWriteResult?> = _pairingWriteResult.asStateFlow()
+
+    /**
+     * UID of the tag whose write keeps failing, and whether we've given up on writing it
+     * ([NfcManager.MAX_WRITE_RETRIES] failures in a row) — the UI then offers to pair anyway.
+     */
+    private val _pairingWriteExhaustedUid = MutableStateFlow<String?>(null)
+    val pairingWriteExhaustedUid: StateFlow<String?> = _pairingWriteExhaustedUid.asStateFlow()
+
+    fun clearPairingWriteResult() {
+        _pairingWriteResult.value = null
+        _pairingWriteExhaustedUid.value = null
+    }
+
+    /** User accepted an unwritable tag: pair it anyway (works only while the app is open). */
+    fun pairAnywayWithoutWrite() {
+        val uid = _pairingWriteExhaustedUid.value ?: return
+        nfcManager.forcePairWithoutWrite()
+        _pairingWriteExhaustedUid.value = null
+        _pairingWriteResult.value = NdefWriteResult.WRITE_PROTECTED
+        _pendingPairingUid.value = uid
+    }
 
     private val _nfcEvents = MutableSharedFlow<NfcResult>()
     val nfcEvents = _nfcEvents.asSharedFlow()
@@ -393,8 +428,25 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
                     cancelEmergency()
                     LockForegroundService.stop(getApplication())
                 }
+                is NfcResult.Paused -> {
+                    // Scheduled block paused by the scan: the session (if any) is already
+                    // ended in the repository; the resume alarm re-locks on its own.
+                    cancelGracePeriod()
+                    cancelEmergency()
+                    LockForegroundService.stop(getApplication())
+                }
                 is NfcResult.TagPaired -> {
-                    _pendingPairingUid.value = result.uid
+                    _pairingWriteResult.value = result.writeResult
+                    // A transient failure keeps the pairing screen waiting for a retry:
+                    // don't hand the tag over for naming/confirmation yet. After too many
+                    // failures in a row, let the UI offer pairing without the write.
+                    if (result.writeResult == NdefWriteResult.TRANSIENT_FAILURE) {
+                        _pairingWriteExhaustedUid.value = result.uid
+                            .takeIf { nfcManager.consecutiveWriteFailures() >= NfcManager.MAX_WRITE_RETRIES }
+                    } else {
+                        _pairingWriteExhaustedUid.value = null
+                        _pendingPairingUid.value = result.uid
+                    }
                 }
                 else -> {} // IgnoredNoEscapeActive / UnknownTag / Error -> no state change
             }
@@ -485,8 +537,11 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
             if (state.isLocked && System.currentTimeMillis() - start >= duration) {
                 cancelGracePeriod()
                 cancelEmergency()
-                repository.endLockSession(EndReason.DURATION.value)
-                LockForegroundService.stop(getApplication())
+                if (repository.endOrContinueTimedSession(EndReason.DURATION.value)) {
+                    LockForegroundService.start(getApplication())
+                } else {
+                    LockForegroundService.stop(getApplication())
+                }
             }
         }
     }
@@ -563,22 +618,30 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
     // --- In-app prompts (support reminder + changelog) ---
     // Initial values are chosen so the prompts DON'T show during the DataStore load window
     // (avoids a one-frame flash): "done" for support, "up-to-date" for the changelog.
-    val supportPromptStage: StateFlow<Int> = repository.supportPromptStage
+    val supportNextThreshold: StateFlow<Int> = repository.supportNextThreshold
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Int.MAX_VALUE)
 
     val lastSeenVersionCode: StateFlow<Int> = repository.lastSeenVersionCode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.nathanb.lock.BuildConfig.VERSION_CODE)
 
-    /** User tapped "maybe later" / closed the support card: advance to the next milestone. */
+    /** "Maybe later" / closed: next milestone is the next multiple of 10 sessions. */
     fun declineSupportPrompt() {
         _inAppCardShownThisLaunch.value = true
-        viewModelScope.launch { repository.setSupportPromptStage(supportPromptStage.value + 1) }
+        viewModelScope.launch {
+            repository.setSupportNextThreshold(
+                SupportPrompt.nextAfterDecline(completedSessionCount.value),
+            )
+        }
     }
 
-    /** User tapped "support": stop prompting forever. */
+    /** "Support" tapped: ask again 20 sessions later, then back to the every-10 rhythm. */
     fun completeSupportPrompt() {
         _inAppCardShownThisLaunch.value = true
-        viewModelScope.launch { repository.setSupportPromptStage(Int.MAX_VALUE) }
+        viewModelScope.launch {
+            repository.setSupportNextThreshold(
+                SupportPrompt.nextAfterSupport(completedSessionCount.value),
+            )
+        }
     }
 
     fun markVersionSeen(versionCode: Int) {
@@ -594,7 +657,19 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
     val inAppCardShownThisLaunch: StateFlow<Boolean> = _inAppCardShownThisLaunch.asStateFlow()
 
     fun enableNfcPairing() {
+        clearPairingWriteResult()
         nfcManager.enablePairingMode()
+    }
+
+    /** Repair path: rewrite the routing data on an already-paired tag. */
+    fun startTagRewrite(uid: String) {
+        clearPairingWriteResult()
+        nfcManager.enableRewriteMode(uid)
+    }
+
+    fun cancelTagRewrite() {
+        nfcManager.disableRewriteMode()
+        clearPairingWriteResult()
     }
 
     fun confirmPairing(name: String) {
@@ -645,10 +720,33 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Guarantees a default profile exists without touching an existing one.
+     * Called when the onboarding app picker is skipped, so later flows (home checklist,
+     * NFC fallback) always have a real profile id to work with.
+     */
+    fun ensureDefaultProfile() {
+        viewModelScope.launch {
+            if (profiles.value.isEmpty()) {
+                repository.createProfile(getApplication<Application>().getString(R.string.default_profile_name), emptyList())
+            }
+        }
+    }
+
     fun updateProfileApps(profileId: Long, blockedPackages: List<String>) {
         viewModelScope.launch {
-            val profile = repository.getProfile(profileId) ?: return@launch
-            repository.updateProfile(profile.copy(blockedPackages = blockedPackages))
+            val profile = repository.getProfile(profileId)
+            when {
+                profile != null -> repository.updateProfile(profile.copy(blockedPackages = blockedPackages))
+                // Installs that skipped the onboarding app picker before 1.2.3 have no
+                // profile at all; the home checklist then routes here with a sentinel id.
+                // Create the default profile instead of dropping the selection.
+                profiles.value.isEmpty() -> repository.createProfile(
+                    getApplication<Application>().getString(R.string.default_profile_name),
+                    blockedPackages,
+                )
+                else -> Log.w("LockViewModel", "updateProfileApps: unknown profile $profileId, selection dropped")
+            }
         }
     }
 
@@ -709,6 +807,10 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { repository.setProfileDuration(profileId, durationMs) }
     }
 
+    fun setProfileContinuity(profileId: Long, enabled: Boolean) {
+        viewModelScope.launch { repository.setProfileContinuity(profileId, enabled) }
+    }
+
     fun setDefaultProfile(profileId: Long) {
         viewModelScope.launch { repository.setDefaultProfile(profileId) }
     }
@@ -729,54 +831,70 @@ class LockViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { repository.setTagProfile(uid, profileId) }
     }
 
-    // --- Scheduled auto-lock ---
+    /** Detach a tag from its profile: it falls back to activating the default profile. */
+    fun dissociateTag(uid: String) {
+        viewModelScope.launch { repository.setTagProfile(uid, null) }
+    }
+
+    // --- Schedules (recurring auto-lock windows) ---
+
+    /** Deadline of the running schedule pause (epoch ms; 0 = none). */
+    val schedulePausedUntil: StateFlow<Long> = repository.schedulePausedUntilFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+
+    /** "Resume blocking" during a schedule pause: end it now, covering windows re-lock. */
+    fun resumeScheduledBlocking() {
+        viewModelScope.launch { repository.resumeSchedulePause() }
+    }
+
+    /** The set actually enforced by the blocker (union of profile + scheduled windows). */
+    val liveBlockedPackages: StateFlow<Set<String>> = repository.blockedPackages
 
     val schedules: StateFlow<List<Schedule>> = repository.schedules
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** Persist a schedule change, then re-arm all alarms from the fresh DB state. */
+    val scheduleLinks: StateFlow<List<ScheduleProfileLink>> = repository.scheduleLinks
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private suspend fun rearmSchedules() {
-        ScheduleManager.rescheduleAll(getApplication(), repository.getSchedules())
+        getApplication<LockApplication>().scheduleManager.evaluateAndRearm()
     }
 
-    fun addSchedule(
+    fun createSchedule(
+        daysOfWeek: Int,
         startMinuteOfDay: Int,
         endMinuteOfDay: Int,
-        daysMask: Int,
-        profileId: Long?,
+        profileIds: List<Long>,
+        allDay: Boolean = false,
+        scanBehavior: String = com.nathanb.lock.data.model.ScanBehavior.UNLOCK.value,
+        pauseDurationMs: Long? = null,
     ) {
         viewModelScope.launch {
-            repository.addSchedule(
-                Schedule(
-                    startMinuteOfDay = startMinuteOfDay,
-                    endMinuteOfDay = endMinuteOfDay,
-                    daysMask = daysMask,
-                    profileId = profileId,
-                    enabled = true,
-                )
+            repository.createSchedule(
+                daysOfWeek, startMinuteOfDay, endMinuteOfDay, profileIds,
+                allDay, scanBehavior, pauseDurationMs,
             )
             rearmSchedules()
         }
     }
 
-    fun updateSchedule(schedule: Schedule) {
+    fun updateSchedule(schedule: Schedule, profileIds: List<Long>) {
         viewModelScope.launch {
-            repository.updateSchedule(schedule)
+            repository.updateSchedule(schedule, profileIds)
             rearmSchedules()
         }
     }
 
-    fun setScheduleEnabled(id: Long, enabled: Boolean) {
+    fun setScheduleEnabled(scheduleId: Long, enabled: Boolean) {
         viewModelScope.launch {
-            repository.setScheduleEnabled(id, enabled)
+            repository.setScheduleEnabled(scheduleId, enabled)
             rearmSchedules()
         }
     }
 
-    fun deleteSchedule(schedule: Schedule) {
+    fun deleteSchedule(scheduleId: Long) {
         viewModelScope.launch {
-            ScheduleManager.cancelSchedule(getApplication(), schedule.id)
-            repository.deleteSchedule(schedule)
+            repository.deleteSchedule(scheduleId)
             rearmSchedules()
         }
     }

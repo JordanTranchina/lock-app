@@ -15,8 +15,12 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -59,6 +63,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.nathanb.lock.R
 import com.nathanb.lock.data.model.SetupStatus
+import com.nathanb.lock.nfc.NdefWriteResult
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
@@ -101,13 +106,20 @@ fun HomeScreen(
     // When locked, reflect the ACTIVE session's profile; otherwise the default profile.
     val displayProfile = lockState.activeProfileId?.let { id -> profiles.find { it.id == id } }
         ?: profiles.firstOrNull { it.isDefault } ?: profiles.firstOrNull()
-    val appCount = displayProfile?.blockedPackages?.size ?: 0
+    // Locked count = the set actually enforced (a scheduled session can block the union of
+    // several profiles, not just the carrier profile). Profile fallback covers the brief
+    // window where the blocked set hasn't been derived yet.
+    val liveBlockedPackages by viewModel.liveBlockedPackages.collectAsStateWithLifecycle()
+    val profileAppCount = displayProfile?.blockedPackages?.size ?: 0
+    val appCount = if (isLocked) maxOf(liveBlockedPackages.size, profileAppCount) else profileAppCount
     val nfcTags by viewModel.nfcTags.collectAsStateWithLifecycle()
     val hasNfcTags = nfcTags.isNotEmpty()
     val completedSessionCount by viewModel.completedSessionCount.collectAsStateWithLifecycle()
-    val supportPromptStage by viewModel.supportPromptStage.collectAsStateWithLifecycle()
+    val supportNextThreshold by viewModel.supportNextThreshold.collectAsStateWithLifecycle()
     val lastSeenVersionCode by viewModel.lastSeenVersionCode.collectAsStateWithLifecycle()
     val pendingUid by viewModel.pendingPairingUid.collectAsStateWithLifecycle()
+    val pairingWriteResult by viewModel.pairingWriteResult.collectAsStateWithLifecycle()
+    val pairingWriteExhaustedUid by viewModel.pairingWriteExhaustedUid.collectAsStateWithLifecycle()
     var nfcPairingSuccess by remember { mutableStateOf(false) }
     var nfcScanActive by remember { mutableStateOf(false) }
     var showEmergencyDialog by remember { mutableStateOf(false) }
@@ -165,6 +177,19 @@ fun HomeScreen(
     // No-escape sessions are always a hard lock.
     val isSoftLock = !lockState.isNoEscape && (isManualMode || !hasNfcTags)
 
+    // Schedule pause: blocked-by-default windows are suspended until this deadline.
+    // Same visual language as the emergency pause (neutral background, countdown, resume).
+    val schedulePausedUntil by viewModel.schedulePausedUntil.collectAsStateWithLifecycle()
+    var pauseRemainingMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(schedulePausedUntil) {
+        while (true) {
+            pauseRemainingMs = (schedulePausedUntil - System.currentTimeMillis()).coerceAtLeast(0L)
+            if (pauseRemainingMs <= 0L) break
+            delay(1000)
+        }
+    }
+    val schedulePauseActive = pauseRemainingMs > 0L && !lockState.isLocked
+
     // Animated background — uses visualLocked so it waits for unlock animation
     val manualLockedBg = if (colors.surface.luminance() < 0.5f) Color(0xFF2A1A08) else Color(0xFFFFF8F0)
     val backgroundColor by animateColorAsState(
@@ -172,6 +197,7 @@ fun HomeScreen(
             isSoftLock && visualLocked && !isUnlocking -> manualLockedBg
             visualLocked && !isUnlocking && !isEmergencyActive -> colors.lockedContainer
             isEmergencyActive -> colors.surfaceContainerHigh
+            schedulePauseActive && !visualLocked -> colors.surfaceContainerHigh
             else -> colors.surface
         },
         label = "bgColor",
@@ -185,11 +211,16 @@ fun HomeScreen(
 
     var showSupportSheet by remember { mutableStateOf(false) }
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundColor),
     ) {
+        // Short screens: the bottom-anchored actions would overlap the centered content,
+        // so below this height they join the column flow instead of floating over it.
+        val isCompactHeight = maxHeight < 760.dp
+        val isLandscape = maxWidth > maxHeight
+
         // Support pill (top-right), hidden during an active lock to keep the focus screen clean.
         if (!visualLocked && !isUnlocking) {
             SupportPill(
@@ -211,10 +242,8 @@ fun HomeScreen(
         val notLocked = !lockState.isLocked && !visualLocked
         val changelogPending = notLocked &&
             com.nathanb.lock.BuildConfig.VERSION_CODE > lastSeenVersionCode
-        val supportThresholds = listOf(3, 10, 20, 30)
         val supportPending = notLocked && !changelogPending && !inAppCardShown &&
-            supportPromptStage < supportThresholds.size &&
-            completedSessionCount >= supportThresholds[supportPromptStage]
+            completedSessionCount >= supportNextThreshold
 
         if (changelogPending) {
             ChangelogCard(
@@ -233,11 +262,60 @@ fun HomeScreen(
             )
         }
 
+        // Bottom actions (lock / emergency unlock / grace cancel). One definition, two
+        // placements: floating overlay on regular screens, inline in the scrollable column
+        // on compact ones. Callers pass the modifiers for the two padding cases (48/120dp).
+        val homeActions: @Composable (Modifier, Modifier) -> Unit = { unlockModifier, lockModifier ->
+            // Unlock button (emergency or manual) — never during a no-escape session.
+            // Manual unlock is also offered with zero tags so a standard lock is never a trap.
+            if (visualLocked && !isUnlocking && !isGracePeriod && !lockState.isNoEscape) {
+                if (isManualMode || !hasNfcTags) {
+                    EmergencyUnlockButton(
+                        remainingUnlocks = 0,
+                        onLongPress = { showManualUnlockDialog = true },
+                        showRemainingLabel = false,
+                        modifier = unlockModifier,
+                    )
+                } else if (!isEmergencyActive && lockState.emergencyUnlocksRemaining > 0) {
+                    EmergencyUnlockButton(
+                        remainingUnlocks = lockState.emergencyUnlocksRemaining,
+                        onLongPress = { showEmergencyDialog = true },
+                        modifier = unlockModifier,
+                    )
+                }
+            }
+            if (isGracePeriod) {
+                GracePeriodIndicator(
+                    graceTimeRemaining = graceTimeRemaining,
+                    gracePeriodMs = gracePeriodMs,
+                    onCancel = { viewModel.cancelLock() },
+                    modifier = unlockModifier,
+                )
+            }
+            if (!visualLocked && !schedulePauseActive && appCount > 0 && hasNfcTags) {
+                ManualLockButton(
+                    onLock = { viewModel.manualLock() },
+                    fillProgress = manualLockFill,
+                    modifier = lockModifier,
+                )
+            }
+        }
+        val inlineActions: @Composable () -> Unit = {
+            if (isCompactHeight) {
+                Spacer(Modifier.height(32.dp))
+                homeActions(Modifier, Modifier)
+                // Clearance below the actions: the floating nav bar overlays the bottom of
+                // the screen when unlocked; without it the lock button hides behind the bar.
+                Spacer(Modifier.height(if (visualLocked) 24.dp else 104.dp))
+            }
+        }
+
         if (!visualLocked && !isManualMode && !setupStatus.isComplete) {
             // Setup incomplete — show checklist
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -254,6 +332,9 @@ fun HomeScreen(
                     setupStatus = setupStatus,
                     appCount = appCount,
                     nfcPairingSuccess = nfcPairingSuccess,
+                    writeInterrupted = pairingWriteResult == NdefWriteResult.TRANSIENT_FAILURE,
+                    writeExhausted = pairingWriteExhaustedUid != null,
+                    onPairAnyway = { viewModel.pairAnywayWithoutWrite() },
                     onNavigateToApps = onNavigateToApps,
                     onNavigateToPermissions = onNavigateToPermissions,
                     onStartNfcScan = {
@@ -262,23 +343,29 @@ fun HomeScreen(
                     },
                     onCancelNfcScan = {
                         nfcScanActive = false
+                        viewModel.nfcManager.disablePairingMode()
+                        viewModel.clearPairingWriteResult()
                     },
                     onNfcScanSuccess = {
                         nfcPairingSuccess = false
+                        viewModel.clearPairingWriteResult()
                     },
                     onActivateManualMode = { viewModel.enableManualMode() },
                 )
+
+                inlineActions()
             }
         } else if (isManualMode && !visualLocked) {
             // Manual mode — unlocked
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Spacer(Modifier.height(80.dp)) // Space for banner
-                Spacer(Modifier.weight(1f))
 
                 AnimatedTriangleLogo(
                     isLocked = isLocked,
@@ -313,12 +400,22 @@ fun HomeScreen(
                 // NFC scan card (expandable)
                 ManualModeNfcNudge(
                     nfcPairingSuccess = nfcPairingSuccess,
+                    writeInterrupted = pairingWriteResult == NdefWriteResult.TRANSIENT_FAILURE,
+                    writeExhausted = pairingWriteExhaustedUid != null,
+                    onPairAnyway = { viewModel.pairAnywayWithoutWrite() },
                     onStartNfcScan = {
                         nfcScanActive = true
                         viewModel.enableNfcPairing()
                     },
-                    onCancelNfcScan = { nfcScanActive = false },
-                    onNfcScanSuccess = { nfcPairingSuccess = false },
+                    onCancelNfcScan = {
+                        nfcScanActive = false
+                        viewModel.nfcManager.disablePairingMode()
+                        viewModel.clearPairingWriteResult()
+                    },
+                    onNfcScanSuccess = {
+                        nfcPairingSuccess = false
+                        viewModel.clearPairingWriteResult()
+                    },
                 )
 
                 Spacer(Modifier.height(16.dp))
@@ -331,17 +428,11 @@ fun HomeScreen(
                     accentColor = ManualOrange,
                 )
 
-                Spacer(Modifier.weight(1f))
             }
         } else {
-            // Normal home content (or manual mode locked — same layout, different colors)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 32.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+            // Normal home content (or manual mode locked — same layout, different colors).
+            // Shared pieces, laid out as a column in portrait and side by side in landscape.
+            val homeLogo: @Composable () -> Unit = {
                 AnimatedTriangleLogo(
                     isLocked = isLocked,
                     iconScale = iconScale,
@@ -349,13 +440,13 @@ fun HomeScreen(
                     fillProgress = if (!visualLocked && appCount > 0 && hasNfcTags) manualLockFill.value else 0f,
                     accentColor = if (isSoftLock && visualLocked) ManualOrange else null,
                 )
-
-                Spacer(Modifier.height(32.dp))
-
+            }
+            val homeStatus: @Composable () -> Unit = {
                 // Status text
                 Text(
                     text = when {
                         isEmergencyActive -> stringResource(R.string.home_status_pause)
+                        schedulePauseActive -> stringResource(R.string.home_status_pause)
                         isUnlocking -> stringResource(R.string.home_status_unlocking)
                         visualLocked -> if (appCount <= 1) stringResource(R.string.home_status_locked_one, appCount) else stringResource(R.string.home_status_locked_many, appCount)
                         else -> stringResource(R.string.home_status_free)
@@ -366,6 +457,7 @@ fun HomeScreen(
                         isUnlocking -> colors.primary
                         isSoftLock && visualLocked -> ManualOrange
                         visualLocked -> colors.lockedPrimary
+                        schedulePauseActive -> colors.onSurfaceVariant
                         else -> colors.primary
                     },
                     letterSpacing = 4.sp,
@@ -426,6 +518,20 @@ fun HomeScreen(
                     }
 
                     Spacer(Modifier.height(32.dp))
+                } else if (schedulePauseActive) {
+                    val mins = (pauseRemainingMs / 60_000).toInt()
+                    val secs = ((pauseRemainingMs % 60_000) / 1000).toInt()
+                    Text(
+                        text = stringResource(R.string.home_emergency_return, mins, secs.toString().padStart(2, '0')),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = colors.onSurface,
+                    )
+
+                    Spacer(Modifier.height(24.dp))
+
+                    FilledTonalButton(onClick = { viewModel.resumeScheduledBlocking() }) {
+                        Text(stringResource(R.string.home_resume_blocking))
+                    }
                 } else {
                     Text(
                         text = if (appCount == 1) stringResource(R.string.home_apps_to_block_one, appCount) else stringResource(R.string.home_apps_to_block_many, appCount),
@@ -434,51 +540,52 @@ fun HomeScreen(
                     )
                 }
             }
-        }
-
-        // Unlock button (emergency or manual) — never during a no-escape session.
-        // Manual unlock is also offered with zero tags so a standard lock is never a trap.
-        if (visualLocked && !isUnlocking && !isGracePeriod && !lockState.isNoEscape) {
-            if (isManualMode || !hasNfcTags) {
-                EmergencyUnlockButton(
-                    remainingUnlocks = 0,
-                    onLongPress = { showManualUnlockDialog = true },
-                    showRemainingLabel = false,
+            if (isLandscape) {
+                Row(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .navigationBarsPadding()
-                        .padding(bottom = 48.dp),
-                )
-            } else if (!isEmergencyActive && lockState.emergencyUnlocksRemaining > 0) {
-                EmergencyUnlockButton(
-                    remainingUnlocks = lockState.emergencyUnlocksRemaining,
-                    onLongPress = { showEmergencyDialog = true },
+                        .fillMaxSize()
+                        .padding(horizontal = 32.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState())
+                            .padding(vertical = 16.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        homeStatus()
+                        homeActions(Modifier, Modifier)
+                    }
+                    Spacer(Modifier.width(64.dp))
+                    homeLogo()
+                }
+            } else {
+                Column(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .navigationBarsPadding()
-                        .padding(bottom = 48.dp),
-                )
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 32.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    homeLogo()
+                    Spacer(Modifier.height(32.dp))
+                    homeStatus()
+                    inlineActions()
+                }
             }
         }
 
-        // Grace period cancel
-        if (isGracePeriod) {
-            GracePeriodIndicator(
-                graceTimeRemaining = graceTimeRemaining,
-                gracePeriodMs = gracePeriodMs,
-                onCancel = { viewModel.cancelLock() },
-                modifier = Modifier
+        if (!isCompactHeight) {
+            homeActions(
+                Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
                     .padding(bottom = 48.dp),
-            )
-        }
-
-        if (!visualLocked && appCount > 0 && hasNfcTags) {
-            ManualLockButton(
-                onLock = { viewModel.manualLock() },
-                fillProgress = manualLockFill,
-                modifier = Modifier
+                Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
                     .padding(bottom = 120.dp),
@@ -514,6 +621,9 @@ fun HomeScreen(
 @Composable
 private fun ManualModeNfcNudge(
     nfcPairingSuccess: Boolean,
+    writeInterrupted: Boolean,
+    writeExhausted: Boolean,
+    onPairAnyway: () -> Unit,
     onStartNfcScan: () -> Unit,
     onCancelNfcScan: () -> Unit,
     onNfcScanSuccess: () -> Unit,
@@ -613,6 +723,13 @@ private fun ManualModeNfcNudge(
                 subtitle = if (nfcPairingSuccess) stringResource(R.string.nfc_tags_paired_success_subtitle)
                 else stringResource(R.string.nfc_tags_waiting_subtitle),
                 isSuccess = nfcPairingSuccess,
+                warning = when {
+                    writeExhausted -> stringResource(R.string.nfc_write_failed_body)
+                    writeInterrupted -> stringResource(R.string.nfc_write_interrupted)
+                    else -> null
+                },
+                secondaryLabel = if (writeExhausted) stringResource(R.string.nfc_write_failed_cta) else null,
+                onSecondaryClick = onPairAnyway,
                 ctaLabel = if (!nfcPairingSuccess) stringResource(R.string.action_cancel) else null,
                 onCtaClick = {
                     expanded = false

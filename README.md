@@ -14,6 +14,15 @@ Lock turns any NFC tag into a physical switch for your focus: tap it to block yo
 ![Platform](https://img.shields.io/badge/platform-Android%2013%2B-brightgreen)
 ![Kotlin](https://img.shields.io/badge/Kotlin-100%25-purple)
 
+## Download
+
+Lock is available in two ways:
+
+- **Google Play** (recommended): automatic updates, signed by Google Play App Signing.
+- **GitHub Releases**: the APK attached to each [release](https://github.com/NathanLenias/lock-app/releases), signed with my own key. No automatic updates: check the releases page (or use a tool like [Obtainium](https://github.com/ImranR98/Obtainium)) to get new versions.
+
+**Pick one source and stick with it.** The two builds are signed with different keys, so Android will refuse to install one over the other. Switching sources means uninstalling first, which deletes your sessions, paired tags and settings (export a backup from Settings before you do).
+
 ## Features
 
 - **NFC toggle**: pair one or more NFC tags; scanning a paired tag locks or unlocks your phone's distracting apps, even when the app isn't running
@@ -66,7 +75,7 @@ NFC features need a physical device with NFC hardware (min SDK 33 / Android 13).
 
 ## Support
 
-Lock is free, without ads or tracking. If it helps you focus, you can [buy me a coffee](https://buymeacoffee.com/nathanpmlen) ☕
+Lock is free, without ads or tracking. If it helps you focus, you can [support me on Ko-fi](https://ko-fi.com/nathanpmdev) ☕
 
 ## Related projects
 

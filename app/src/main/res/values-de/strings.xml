@@ -5,6 +5,7 @@
 
     <!-- Common -->
     <string name="action_cancel">Abbrechen</string>
+    <string name="action_done">Fertig</string>
     <string name="action_confirm">Bestätigen</string>
     <string name="action_continue">Weiter</string>
     <string name="action_back">Zurück</string>
@@ -55,6 +56,7 @@
     <string name="settings_session">Sitzung</string>
     <string name="settings_session_subtitle">Schonfrist, Dauer, …</string>
     <string name="settings_appearance">Darstellung</string>
+    <string name="settings_language">Sprache</string>
     <string name="settings_notifications">Benachrichtigungen</string>
     <string name="settings_notifications_on">Aktiviert</string>
     <string name="settings_notifications_off">Deaktiviert</string>
@@ -72,6 +74,9 @@
     <string name="theme_auto">Auto</string>
     <string name="theme_light">Hell</string>
     <string name="theme_dark">Dunkel</string>
+
+    <!-- Language -->
+    <string name="language_system">Systemsprache</string>
 
     <!-- Profile Card -->
     <string name="profile_apps_to_block">Zu blockierende Apps</string>
@@ -102,7 +107,7 @@
     <string name="nfc_tags_paired">Tag gekoppelt!</string>
     <string name="nfc_tags_paired_subtitle">Ihr NFC-Tag wurde erfolgreich hinzugefügt.</string>
     <string name="nfc_tags_waiting">Warte auf NFC-Tag…</string>
-    <string name="nfc_tags_waiting_subtitle">Halten Sie Ihr NFC-Tag an die Rückseite des Telefons.</string>
+    <string name="nfc_tags_waiting_subtitle">Halten Sie Ihr NFC-Tag an die Rückseite des Telefons, bis die Bestätigung erscheint.</string>
     <string name="nfc_tags_rename_title">Tag umbenennen</string>
     <string name="nfc_tags_name_title">Tag benennen</string>
     <string name="nfc_tags_name_label">Name</string>
@@ -240,7 +245,7 @@
 
     <!-- Onboarding: Permissions (Page 3) -->
     <string name="onboarding_perm_title">Berechtigungen</string>
-    <string name="onboarding_perm_subtitle">Lock benötigt 3 Berechtigungen, um zu funktionieren</string>
+    <string name="onboarding_perm_subtitle">Lock benötigt diese 3 Berechtigungen, um richtig zu funktionieren. Tippen Sie auf jede Karte, um sie zu aktivieren.</string>
     <string name="onboarding_perm_accessibility_title">Bedienungshilfen-Dienst</string>
     <string name="onboarding_perm_accessibility_desc">Erkennt, wenn blockierte Apps geöffnet werden</string>
     <string name="onboarding_perm_accessibility_detail">Dieser Dienst ermöglicht es Lock zu erkennen, wenn Sie eine blockierte App öffnen. Ohne diese Berechtigung kann die Blockierung nicht funktionieren.\n\nDas ist der Kern der Funktionsweise von Lock.</string>
@@ -360,6 +365,9 @@
     <string name="toast_blocking_on">Blockierung aktiviert%s</string>
     <string name="toast_blocking_off">Blockierung deaktiviert%s</string>
     <string name="toast_unknown_tag">Unbekanntes Tag</string>
+    <string name="toast_error_no_tag">Kein Tag gekoppelt</string>
+    <string name="toast_error_no_profile">Kein Profil eingerichtet</string>
+    <string name="toast_error_no_apps">Wählen Sie zuerst die zu blockierenden Apps aus</string>
     <string name="toast_no_escape_active">Sitzung läuft, Entsperren nicht möglich.</string>
 
     <!-- Profiles -->
@@ -455,44 +463,85 @@
     <string name="inapp_changelog_version">VERSION %s</string>
     <string name="inapp_changelog_title">Neu in Lock</string>
     <string name="inapp_changelog_cta">Entdecken</string>
-    <string name="inapp_changelog_1_title">Mehrere Profile</string>
-    <string name="inapp_changelog_1_body">Erstellen Sie Profile für Ihre Bedürfnisse: Arbeit, soziale Medien, Schlaf…</string>
-    <string name="inapp_changelog_2_title">Temporäre Profile</string>
-    <string name="inapp_changelog_2_body">Ein Profil mit Timer, das sich nicht per NFC-Tag deaktivieren lässt.</string>
-    <string name="inapp_changelog_3_title">Deutsche Übersetzung</string>
-    <string name="inapp_changelog_3_body">Deutsch gesellt sich zu Englisch und Französisch in der App!</string>
+    <string name="inapp_changelog_1_title">Zeitpläne</string>
+    <string name="inapp_changelog_1_body">Neu: ganztägige Zeitpläne und die Wahl, was ein Scan bewirkt: entsperren oder eine Pause, die von selbst endet.</string>
+    <string name="inapp_changelog_2_title">Zeitprofile</string>
+    <string name="inapp_changelog_2_body">Neu: benutzerdefinierte Dauer bis 2 Std. und fortlaufende Blockierung: Nach Ablauf des Timers bleibt alles bis zum nächsten Scan blockiert.</string>
 
-    <!-- Geplante automatische Sperre -->
-    <string name="settings_schedules">Zeitplan</string>
-    <string name="settings_schedules_subtitle">Auto-Sperre</string>
-    <string name="settings_schedules_count">%1$d Zeitplan%2$s</string>
-    <string name="schedules_title">Geplante Sperre</string>
-    <string name="schedules_desc">Aktiviere und löse die Sperre automatisch zu festgelegten Zeiten an den von dir gewählten Tagen.</string>
-    <string name="schedules_empty">Noch keine Zeitpläne</string>
-    <string name="schedules_empty_desc">Füge einen Zeitplan hinzu, um automatisch zu sperren und zu entsperren.</string>
-    <string name="schedules_add">Zeitplan hinzufügen</string>
-    <string name="schedule_new_title">Neuer Zeitplan</string>
-    <string name="schedule_edit_title">Zeitplan bearbeiten</string>
-    <string name="schedule_lock_at">Sperren um</string>
-    <string name="schedule_unlock_at">Entsperren um</string>
-    <string name="schedule_repeat">Wiederholen</string>
-    <string name="schedule_profile">Profil</string>
-    <string name="schedule_profile_default">Standardprofil</string>
+    <!-- Zeitpläne -->
+    <string name="schedule_settings_entry">Zeitpläne</string>
+    <string name="schedule_settings_subtitle">Sperren Sie Ihre Profile zu festen Zeiten</string>
+    <string name="schedules_title">Zeitpläne</string>
+    <string name="schedules_subtitle">Automatische Sperrung</string>
+    <string name="schedules_empty_title">Kein Zeitplan</string>
+    <string name="schedules_empty_body">Erstellen Sie einen Zeitplan, um Ihre Profile automatisch zu festen Zeiten zu sperren, ohne Ihren Tag zu scannen.</string>
+    <string name="schedules_new">Neuer Zeitplan</string>
+    <string name="schedule_edit_title_new">Neuer Zeitplan</string>
+    <string name="schedule_edit_title_edit">Zeitplan bearbeiten</string>
+    <string name="schedule_days_label">Tage</string>
+    <string name="schedule_hours_label">Uhrzeiten</string>
+    <string name="schedule_start_label">Beginn</string>
+    <string name="schedule_end_label">Ende</string>
+    <string name="schedule_time_range">%1$s – %2$s</string>
+    <string name="schedule_time_range_overnight">%1$s – %2$s (+1)</string>
+    <string name="schedule_every_day">Jeden Tag</string>
+    <string name="schedule_overnight_hint">Dieses Zeitfenster geht über Mitternacht: Die Sperrung endet am nächsten Tag um %1$s.</string>
+    <string name="schedule_days_required">Wählen Sie mindestens einen Tag</string>
+    <string name="schedule_same_time_error">Start- und Endzeit müssen sich unterscheiden</string>
+    <string name="schedule_profiles_label">Zu sperrende Profile</string>
+    <string name="schedule_profiles_hint">Die Apps der gewählten Profile werden während des Zeitfensters gesperrt.</string>
+    <string name="schedule_add_profile">Profil hinzufügen</string>
+    <string name="schedule_no_profile">Kein Profil</string>
+    <string name="schedule_profile_apps">%1$d Apps</string>
+    <string name="schedule_picker_title">Zu sperrende Profile</string>
+    <string name="schedule_picker_empty">Kein klassisches Profil verfügbar.</string>
+    <string name="schedule_save">Speichern</string>
     <string name="schedule_delete">Zeitplan löschen</string>
-    <string name="schedule_range">%1$s → %2$s</string>
-    <string name="schedule_overnight_note">Endet am nächsten Morgen</string>
-    <string name="schedules_every_day">Jeden Tag</string>
-    <string name="schedules_weekdays">Wochentags</string>
-    <string name="schedules_weekends">Wochenende</string>
-    <string name="schedule_no_days">Wähle mindestens einen Tag</string>
-    <string name="schedule_exact_alarm_title">Exakte Alarme erlauben</string>
-    <string name="schedule_exact_alarm_desc">Für pünktliches Sperren erlaube Lock, exakte Alarme zu planen. Andernfalls kann sich die Sperre verzögern.</string>
-    <string name="schedule_exact_alarm_action">Einstellungen öffnen</string>
-    <string name="schedule_day_mon">Mo</string>
-    <string name="schedule_day_tue">Di</string>
-    <string name="schedule_day_wed">Mi</string>
-    <string name="schedule_day_thu">Do</string>
-    <string name="schedule_day_fri">Fr</string>
-    <string name="schedule_day_sat">Sa</string>
-    <string name="schedule_day_sun">So</string>
+    <string name="schedule_delete_confirm_title">Diesen Zeitplan löschen?</string>
+    <string name="schedule_delete_confirm_body">Seine Sperrfenster werden nicht mehr ausgelöst.</string>
+    <string name="schedule_delete_confirm_cta">Löschen</string>
+    <string name="schedule_alarm_perm_title">Wecker und Erinnerungen erlauben</string>
+    <string name="schedule_alarm_perm_body">Lock benötigt diese Berechtigung, um Ihre geplanten Sperrungen pünktlich zu starten und zu beenden.</string>
+    <string name="schedule_alarm_perm_later">Später</string>
+    <string-array name="schedule_day_initials">
+        <item>M</item><item>D</item><item>M</item><item>D</item><item>F</item><item>S</item><item>S</item>
+    </string-array>
+
+    <!-- NFC-Tag beschreiben -->
+    <string name="nfc_write_interrupted">Der Schreibvorgang wurde unterbrochen. Halten Sie das Tag ruhig, um es erneut zu versuchen.</string>
+    <string name="nfc_write_protected_title">Tag ist schreibgeschützt</string>
+    <string name="nfc_write_protected_body">Dieses Tag kann die Daten von Lock nicht speichern und funktioniert daher nur bei geöffneter App. Es wurde dennoch verknüpft.</string>
+    <string name="nfc_tag_rewrite">Tag neu beschreiben</string>
+    <string name="nfc_tag_rewrite_waiting">Tag wird neu beschrieben…</string>
+    <string name="nfc_tag_rewrite_subtitle">Halten Sie %1$s an die Rückseite des Telefons, bis die Bestätigung erscheint.</string>
+    <string name="nfc_tag_rewrite_done">Tag neu beschrieben</string>
+    <string name="nfc_tag_rewrite_done_subtitle">Es funktioniert jetzt auch bei geschlossener App.</string>
+    <string name="nfc_tag_rewrite_hint">Tag funktioniert bei geschlossener App nicht? Neu beschreiben.</string>
+
+    <string name="nfc_write_failed_title">Tag kann nicht beschrieben werden</string>
+    <string name="nfc_write_failed_body">Das Beschreiben schlägt wiederholt fehl. Sie können es trotzdem verknüpfen: Es funktioniert bei geöffneter App, aber nicht bei geschlossener App.</string>
+    <string name="nfc_write_failed_cta">Trotzdem verknüpfen</string>
+    <string name="nfc_write_failed_retry">Erneut versuchen</string>
+    <string name="profile_duration_unit">Min.</string>
+    <string name="profile_duration_custom">Benutzerdefiniert</string>
+    <string name="profile_duration_decrease">Dauer verringern</string>
+    <string name="profile_duration_increase">Dauer erhöhen</string>
+    <string name="profile_continuity_section">Fortlaufende Blockierung</string>
+    <string name="profile_continuity_title">Blockiert bis zum Scan</string>
+    <string name="profile_continuity_subtitle">Nach Ablauf des Timers bleiben die Apps dieses Profils bis zum nächsten Tag-Scan blockiert</string>
+    <string name="profile_continuity_disabled">Verknüpfen Sie einen NFC-Tag, um die Kontinuität aktivieren zu können.</string>
+    <string name="profile_dissociate_tag">Tag trennen</string>
+    <string name="toast_pause_resumes">Pause · Blockierung wird in %d Min. fortgesetzt</string>
+    <string name="schedule_window_label">Zeitfenster</string>
+    <string name="schedule_all_day">Ganztägig</string>
+    <string name="schedule_all_day_subtitle">Deckt rund um die Uhr ab, ohne ein Zeitfenster zu belegen</string>
+    <string name="schedule_scan_label">Beim NFC-Scan</string>
+    <string name="schedule_scan_unlock">Entsperren</string>
+    <string name="schedule_scan_pause">Pause</string>
+    <string name="schedule_scan_unlock_hint">Entsperrt bis zum nächsten Auftreten des Zeitplans.</string>
+    <string name="schedule_scan_pause_hint">Entsperrt für begrenzte Zeit, danach wird die Blockierung automatisch fortgesetzt.</string>
+    <string name="schedule_pause_duration_label">Pausendauer</string>
+    <string name="duration_unit_hour">Std.</string>
+    <string name="inapp_changelog_3_title">Zuverlässigkeit</string>
+    <string name="inapp_changelog_3_body">Korrektur: Das automatische Sitzungsende konnte sich verzögern, während das Telefon schlief. Alles wird jetzt pünktlich ausgelöst.</string>
 </resources>

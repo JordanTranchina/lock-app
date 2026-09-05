@@ -5,6 +5,7 @@
 
     <!-- Common -->
     <string name="action_cancel">Annuler</string>
+    <string name="action_done">Terminé</string>
     <string name="action_confirm">Valider</string>
     <string name="action_continue">Continuer</string>
     <string name="action_back">Retour</string>
@@ -58,6 +59,7 @@
     <string name="settings_session">Session</string>
     <string name="settings_session_subtitle">Délai de grâce, durée, ..</string>
     <string name="settings_appearance">Apparence</string>
+    <string name="settings_language">Langue</string>
     <string name="settings_notifications">Notifications</string>
     <string name="settings_notifications_on">Activées</string>
     <string name="settings_notifications_off">Désactivées</string>
@@ -75,6 +77,9 @@
     <string name="theme_auto">Auto</string>
     <string name="theme_light">Clair</string>
     <string name="theme_dark">Sombre</string>
+
+    <!-- Language -->
+    <string name="language_system">Langue du système</string>
 
     <!-- Profile Card -->
     <string name="profile_apps_to_block">Applications à bloquer</string>
@@ -105,7 +110,7 @@
     <string name="nfc_tags_paired">Tag associé !</string>
     <string name="nfc_tags_paired_subtitle">Votre tag NFC a été ajouté avec succès.</string>
     <string name="nfc_tags_waiting">En attente du tag NFC…</string>
-    <string name="nfc_tags_waiting_subtitle">Approchez votre tag NFC à l\'arrière du téléphone.</string>
+    <string name="nfc_tags_waiting_subtitle">Maintenez votre tag NFC à l\'arrière du téléphone jusqu\'à la confirmation.</string>
     <string name="nfc_tags_rename_title">Renommer le tag</string>
     <string name="nfc_tags_name_title">Nommer ce tag</string>
     <string name="nfc_tags_name_label">Nom</string>
@@ -258,7 +263,7 @@
 
     <!-- Onboarding: Permissions (Page 3) -->
     <string name="onboarding_perm_title">Autorisations</string>
-    <string name="onboarding_perm_subtitle">Lock a besoin de 3 autorisations pour fonctionner</string>
+    <string name="onboarding_perm_subtitle">Lock a besoin de ces 3 autorisations pour fonctionner correctement. Appuyez sur chaque carte pour les activer.</string>
     <string name="onboarding_perm_accessibility_title">Service d\'accessibilité</string>
     <string name="onboarding_perm_accessibility_desc">Détecte l\'ouverture des apps bloquées</string>
     <string name="onboarding_perm_accessibility_detail">Ce service permet à Lock de détecter quand vous ouvrez une app bloquée. Sans cette permission, le blocage ne peut pas fonctionner.\n\nC\'est le cœur du fonctionnement de Lock.</string>
@@ -358,6 +363,9 @@
     <string name="toast_blocking_on">Blocage activé%s</string>
     <string name="toast_blocking_off">Blocage désactivé%s</string>
     <string name="toast_unknown_tag">Tag non reconnu</string>
+    <string name="toast_error_no_tag">Aucun tag associé</string>
+    <string name="toast_error_no_profile">Aucun profil configuré</string>
+    <string name="toast_error_no_apps">Choisissez d\'abord vos applications à bloquer</string>
     <string name="toast_no_escape_active">Session en cours, impossible de débloquer.</string>
 
     <!-- Profils -->
@@ -453,44 +461,85 @@
     <string name="inapp_changelog_version">VERSION %s</string>
     <string name="inapp_changelog_title">Du nouveau dans Lock</string>
     <string name="inapp_changelog_cta">Découvrir</string>
-    <string name="inapp_changelog_1_title">Profils multiples</string>
-    <string name="inapp_changelog_1_body">Créez des profils adaptés à vos besoins : Travail, réseaux, sommeil…</string>
-    <string name="inapp_changelog_2_title">Profils temporaires</string>
-    <string name="inapp_changelog_2_body">Un profil avec minuteur, non désactivable via tag NFC.</string>
-    <string name="inapp_changelog_3_title">Traduction allemande</string>
-    <string name="inapp_changelog_3_body">L\'allemand rejoint l\'anglais et le français de l\'app !</string>
+    <string name="inapp_changelog_1_title">Plannings</string>
+    <string name="inapp_changelog_1_body">Nouveau : plannings sur toute la journée, et un choix du comportement au scan : débloquer, ou une pause qui se termine toute seule.</string>
+    <string name="inapp_changelog_2_title">Profils minutés</string>
+    <string name="inapp_changelog_2_body">Nouveau : durée personnalisée jusqu\'à 2 h, et la continuité de blocage : à la fin du minuteur, restez bloqué jusqu\'au scan.</string>
 
-    <!-- Verrouillage programmé -->
-    <string name="settings_schedules">Horaires</string>
-    <string name="settings_schedules_subtitle">Verrouillage auto</string>
-    <string name="settings_schedules_count">%1$d horaire%2$s</string>
-    <string name="schedules_title">Verrouillage programmé</string>
-    <string name="schedules_desc">Activez et désactivez le blocage automatiquement, aux heures et aux jours que vous choisissez.</string>
-    <string name="schedules_empty">Aucun horaire</string>
-    <string name="schedules_empty_desc">Ajoutez un horaire pour verrouiller et déverrouiller automatiquement.</string>
-    <string name="schedules_add">Ajouter un horaire</string>
-    <string name="schedule_new_title">Nouvel horaire</string>
-    <string name="schedule_edit_title">Modifier l\'horaire</string>
-    <string name="schedule_lock_at">Verrouiller à</string>
-    <string name="schedule_unlock_at">Déverrouiller à</string>
-    <string name="schedule_repeat">Répéter</string>
-    <string name="schedule_profile">Profil</string>
-    <string name="schedule_profile_default">Profil par défaut</string>
-    <string name="schedule_delete">Supprimer l\'horaire</string>
-    <string name="schedule_range">%1$s → %2$s</string>
-    <string name="schedule_overnight_note">Se termine le lendemain matin</string>
-    <string name="schedules_every_day">Tous les jours</string>
-    <string name="schedules_weekdays">En semaine</string>
-    <string name="schedules_weekends">Week-end</string>
-    <string name="schedule_no_days">Choisissez au moins un jour</string>
-    <string name="schedule_exact_alarm_title">Autoriser les alarmes exactes</string>
-    <string name="schedule_exact_alarm_desc">Pour un verrouillage à l\'heure précise, autorisez Lock à programmer des alarmes exactes. Sans cela, le verrouillage peut être retardé.</string>
-    <string name="schedule_exact_alarm_action">Ouvrir les réglages</string>
-    <string name="schedule_day_mon">Lun</string>
-    <string name="schedule_day_tue">Mar</string>
-    <string name="schedule_day_wed">Mer</string>
-    <string name="schedule_day_thu">Jeu</string>
-    <string name="schedule_day_fri">Ven</string>
-    <string name="schedule_day_sat">Sam</string>
-    <string name="schedule_day_sun">Dim</string>
+    <!-- Plannings -->
+    <string name="schedule_settings_entry">Plannings</string>
+    <string name="schedule_settings_subtitle">Bloquez vos profils aux horaires définis</string>
+    <string name="schedules_title">Plannings</string>
+    <string name="schedules_subtitle">Blocage automatique</string>
+    <string name="schedules_empty_title">Aucun planning</string>
+    <string name="schedules_empty_body">Créez un planning pour bloquer vos profils automatiquement aux horaires définis, sans scanner votre tag.</string>
+    <string name="schedules_new">Nouveau planning</string>
+    <string name="schedule_edit_title_new">Nouveau planning</string>
+    <string name="schedule_edit_title_edit">Modifier le planning</string>
+    <string name="schedule_days_label">Jours</string>
+    <string name="schedule_hours_label">Horaires</string>
+    <string name="schedule_start_label">Début</string>
+    <string name="schedule_end_label">Fin</string>
+    <string name="schedule_time_range">%1$s – %2$s</string>
+    <string name="schedule_time_range_overnight">%1$s – %2$s (+1)</string>
+    <string name="schedule_every_day">Tous les jours</string>
+    <string name="schedule_overnight_hint">La fenêtre passe minuit : le blocage se termine le lendemain à %1$s.</string>
+    <string name="schedule_days_required">Sélectionnez au moins un jour</string>
+    <string name="schedule_same_time_error">L\'heure de début et de fin doivent être différentes</string>
+    <string name="schedule_profiles_label">Profils à bloquer</string>
+    <string name="schedule_profiles_hint">Les apps des profils choisis seront bloquées pendant la fenêtre.</string>
+    <string name="schedule_add_profile">Ajouter un profil</string>
+    <string name="schedule_no_profile">Aucun profil</string>
+    <string name="schedule_profile_apps">%1$d apps</string>
+    <string name="schedule_picker_title">Profils à bloquer</string>
+    <string name="schedule_picker_empty">Aucun profil classique disponible.</string>
+    <string name="schedule_save">Enregistrer</string>
+    <string name="schedule_delete">Supprimer le planning</string>
+    <string name="schedule_delete_confirm_title">Supprimer ce planning ?</string>
+    <string name="schedule_delete_confirm_body">Ses fenêtres de blocage ne se déclencheront plus.</string>
+    <string name="schedule_delete_confirm_cta">Supprimer</string>
+    <string name="schedule_alarm_perm_title">Autoriser les alarmes et rappels</string>
+    <string name="schedule_alarm_perm_body">Lock a besoin de cette autorisation pour démarrer et arrêter vos blocages planifiés à l\'heure exacte.</string>
+    <string name="schedule_alarm_perm_later">Plus tard</string>
+    <string-array name="schedule_day_initials">
+        <item>L</item><item>M</item><item>M</item><item>J</item><item>V</item><item>S</item><item>D</item>
+    </string-array>
+
+    <!-- Écriture des tags NFC -->
+    <string name="nfc_write_interrupted">L\'écriture a été interrompue. Maintenez le tag sans bouger pour réessayer.</string>
+    <string name="nfc_write_protected_title">Tag protégé en écriture</string>
+    <string name="nfc_write_protected_body">Ce tag ne peut pas stocker les données de Lock : il fonctionnera uniquement quand l\'app est ouverte. Il a tout de même été associé.</string>
+    <string name="nfc_tag_rewrite">Réécrire le tag</string>
+    <string name="nfc_tag_rewrite_waiting">Réécriture du tag…</string>
+    <string name="nfc_tag_rewrite_subtitle">Maintenez %1$s à l\'arrière du téléphone jusqu\'à la confirmation.</string>
+    <string name="nfc_tag_rewrite_done">Tag réécrit</string>
+    <string name="nfc_tag_rewrite_done_subtitle">Il fonctionne désormais même quand Lock est fermée.</string>
+    <string name="nfc_tag_rewrite_hint">Le tag ne marche pas app fermée ? Réécrivez-le.</string>
+
+    <string name="nfc_write_failed_title">Écriture impossible sur ce tag</string>
+    <string name="nfc_write_failed_body">L\'écriture échoue à répétition. Vous pouvez l\'associer quand même : il fonctionnera quand Lock est ouverte, mais pas quand l\'app est fermée.</string>
+    <string name="nfc_write_failed_cta">Associer quand même</string>
+    <string name="nfc_write_failed_retry">Réessayer</string>
+    <string name="profile_duration_unit">min</string>
+    <string name="profile_duration_custom">Personnalisé</string>
+    <string name="profile_duration_decrease">Réduire la durée</string>
+    <string name="profile_duration_increase">Augmenter la durée</string>
+    <string name="profile_continuity_section">Continuité de blocage</string>
+    <string name="profile_continuity_title">Rester bloqué jusqu\'au scan</string>
+    <string name="profile_continuity_subtitle">À la fin du minuteur, conserve le blocage des applications du profil jusqu\'au prochain scan du tag NFC</string>
+    <string name="profile_continuity_disabled">Associez un tag NFC pour pouvoir activer la continuité.</string>
+    <string name="profile_dissociate_tag">Dissocier ce tag</string>
+    <string name="toast_pause_resumes">Pause · le blocage reprend dans %d min</string>
+    <string name="schedule_window_label">Fenêtre</string>
+    <string name="schedule_all_day">Toute la journée</string>
+    <string name="schedule_all_day_subtitle">Couvre 24 h/24, sans occuper de plage horaire</string>
+    <string name="schedule_scan_label">Au scan NFC</string>
+    <string name="schedule_scan_unlock">Débloquer</string>
+    <string name="schedule_scan_pause">Pause</string>
+    <string name="schedule_scan_unlock_hint">Débloque jusqu\'à la prochaine occurrence du planning.</string>
+    <string name="schedule_scan_pause_hint">Débloque un temps limité, puis le blocage reprend automatiquement.</string>
+    <string name="schedule_pause_duration_label">Durée de la pause</string>
+    <string name="duration_unit_hour">h</string>
+    <string name="inapp_changelog_3_title">Fiabilité</string>
+    <string name="inapp_changelog_3_body">Correction : la fin de session automatique pouvait arriver en retard quand le téléphone était en veille. Tout se déclenche désormais à l\'heure.</string>
 </resources>
